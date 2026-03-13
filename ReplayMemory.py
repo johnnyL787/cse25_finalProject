@@ -21,7 +21,7 @@ class ReplayMemory(object):
         self.memory = deque([], maxlen = capacity)
 
     def push(self, *args):
-        self.memory.append(self.memory, batch_size)
+        self.memory.append(Transition(*args))
     
     def sample(self, batch_size):
         return random.sample(self.memory, batch_size)

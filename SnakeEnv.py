@@ -12,6 +12,29 @@ class SnakeEnv(gym.Env):
     Minimal Snake environment (work-in-progress).
     Actions: 0=Straight, 1=Left, 2=Right
     Observation: 11-dim feature vector
+
+    Variables:
+        snake = [(x0, y0), (x1, y1), (x2, y2), ...]
+            array of xy coordinates, first coordinate is the head of the snake
+
+        steps
+            number of times the state has been updated
+
+        direction
+            which way the snake is facing
+            up - (0, 1)
+            down - (0, -1)
+            left - (-1, 0)
+            right - (1, 0)
+
+        action
+            0 - straight
+            1 - left
+            2 - right
+
+        food
+            coordinate (x, y) of current food
+
     """
 
     
@@ -142,3 +165,26 @@ class SnakeEnv(gym.Env):
             food_left, food_right, food_up, food_down,
             moving_left, moving_right, moving_up, moving_down
         ], dtype=np.float32)
+    
+    def visualize(self):
+        for i in range(self.grid_size):
+            print(self.grid_size * "[_]")
+
+
+    """
+    [_ _ _ _ _ _ _ _ _ _]
+    [_ _ _ _ _ _ _ _ _ _]
+    [_ _ _ _ _ _ _ _ _ _]
+    [_ _ _ _ _ _ _ _ _ _]
+    [_ _ _ _ _ _ _ _ _ _]
+    [_ _ _ _ _ _ _ _ _ _]
+
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    [_][_][_][_][_][_][_][_][_][_]
+    """
