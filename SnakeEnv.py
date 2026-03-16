@@ -7,6 +7,9 @@ from tqdm import tqdm
 import pandas as pd
 import random
 
+from Game import Game
+import time
+
 class SnakeEnv(gym.Env):
     """
     Minimal Snake environment (work-in-progress).

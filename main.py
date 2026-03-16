@@ -20,6 +20,8 @@ from ReplayMemory import ReplayMemory
 from DQN import DQN
 
 env = SnakeEnv()
+print(env.snake)
+print(tuple(map(int, env.food)))
 
 # set up matplotlib
 is_ipython = 'inline' in plt.get_backend()
@@ -161,6 +163,10 @@ def optimize_model():
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
 
+from Board import Board
+from Game import Game
+import time
+import pygame
 
 if torch.cuda.is_available() or torch.backends.mps.is_available():
     num_episodes = 600
@@ -208,15 +214,17 @@ for i_episode in tqdm(range(num_episodes)):
             plot_durations()
             break
 
+torch.save(policy_net.state_dict(), "snake_dqn.pth")
+
 print('Complete')
 plot_durations(show_result=True)
 plt.ioff()
 env.visualize()
 
 plt.figure(2)
-plt.title('Number of food eaten per episode')
+plt.title('Score per episode')
 plt.xlabel('Episodes')
-plt.ylabel('# of food')
+plt.ylabel('Score')
 plt.plot(food_per_episode)
 
 plt.show()
