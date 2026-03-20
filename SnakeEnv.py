@@ -5,7 +5,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from tqdm import tqdm
 import pandas as pd
-import random
+import math
 
 from Game import Game
 import time
@@ -43,7 +43,9 @@ class SnakeEnv(gym.Env):
     
     REWARD_EAT = 10.0
     PENALTY_DEATH = -10.0
-    STEP_PENALTY = -0.1
+    STEP_PENALTY = -0.2
+    FURTHER_PENALTY = -0.1
+    CLOSER_REWARD = 0.1
 
     def __init__(self, grid_size=10, max_steps=500):
         super().__init__()
@@ -96,6 +98,7 @@ class SnakeEnv(gym.Env):
             terminated = True
 
         else:
+            previous_distance = self._distance()
             # Advance snake
             self.snake.insert(0, new_head)
 
@@ -104,7 +107,12 @@ class SnakeEnv(gym.Env):
                 reward = self.REWARD_EAT
                 self._spawn_food()
             else:
-                self.snake.pop()  
+                self.snake.pop()
+                
+                if self._distance() < previous_distance:
+                    reward += self.CLOSER_REWARD
+                else:
+                    reward += self.FURTHER_PENALTY
 
         if self.steps >= self.max_steps:
             truncated = True
@@ -130,15 +138,56 @@ class SnakeEnv(gym.Env):
         else:                # right
             return (dy, -dx)
 
-    def _danger(self, direction):
-        head_x, head_y = self.snake[0]
+    def _danger_distance(self, direction):
+        x, y = self.snake[0]
         dx, dy = direction
-        nxt = (head_x + dx, head_y + dy)
-        if not (0 <= nxt[0] < self.grid_size and 0 <= nxt[1] < self.grid_size):
-            return 1.0
-        if nxt in self.snake:
-            return 1.0
-        return 0.0
+        steps = 0
+
+        while True:
+            x += dx
+            y += dy
+            steps += 1
+
+            if not (0 <= x < self.grid_size and 0 <= y < self.grid_size):
+                break
+            if (x, y) in self.snake:
+                break
+
+        return steps / self.grid_size
+    
+    def _flood_fill(self, start):
+        visited = set()
+        stack = [start]
+
+        while stack:
+            x, y = stack.pop()
+
+            if (x, y) in visited:
+                continue
+            if not (0 <= x < self.grid_size and 0 <= y < self.grid_size):
+                continue
+            if (x, y) in self.snake:
+                continue
+
+            visited.add((x, y))
+
+            stack.append((x + 1, y))
+            stack.append((x - 1, y))
+            stack.append((x, y + 1))
+            stack.append((x, y - 1))
+
+        return len(visited)
+    
+    def _space_after_move(self, direction):
+        hx, hy = self.snake[0]
+        dx, dy = direction
+        new_head = (hx + dx, hy + dy)
+
+        if new_head in self.snake:
+            return 0.0
+        
+        space = self._flood_fill(new_head)
+        return space / (self.grid_size ** 2)
 
     def _get_obs(self):
         head_x, head_y = self.snake[0]
@@ -149,14 +198,21 @@ class SnakeEnv(gym.Env):
         left = (-dy, dx)
         right = (dy, -dx)
 
-        danger_straight = self._danger(straight)
-        danger_left = self._danger(left)
-        danger_right = self._danger(right)
+        danger_straight = self._danger_distance(straight)
+        danger_left = self._danger_distance(left)
+        danger_right = self._danger_distance(right)
 
-        food_left = 1.0 if fx < head_x else 0.0
-        food_right = 1.0 if fx > head_x else 0.0
-        food_up = 1.0 if fy < head_y else 0.0
-        food_down = 1.0 if fy > head_y else 0.0
+        food_dx = (fx - head_x) / self.grid_size
+        food_dy = (fy - head_y) / self.grid_size
+
+        space_straight = self._space_after_move(straight)
+        space_left = self._space_after_move(left)
+        space_right = self._space_after_move(right)
+
+        #food_left = 1.0 if fx < head_x else 0.0
+        #food_right = 1.0 if fx > head_x else 0.0
+        #food_up = 1.0 if fy < head_y else 0.0
+        #food_down = 1.0 if fy > head_y else 0.0
 
         moving_left = 1.0 if (dx, dy) == (-1, 0) else 0.0
         moving_right = 1.0 if (dx, dy) == (1, 0) else 0.0
@@ -165,29 +221,15 @@ class SnakeEnv(gym.Env):
 
         return np.array([
             danger_straight, danger_left, danger_right,
-            food_left, food_right, food_up, food_down,
-            moving_left, moving_right, moving_up, moving_down
+            food_dx, food_dy,
+            moving_left, moving_right, moving_up, moving_down,
+            space_straight, space_left, space_right,
         ], dtype=np.float32)
     
     def visualize(self):
         for i in range(self.grid_size):
             print(self.grid_size * "[_]")
 
-
-    """
-    [_ _ _ _ _ _ _ _ _ _]
-    [_ _ _ _ _ _ _ _ _ _]
-    [_ _ _ _ _ _ _ _ _ _]
-    [_ _ _ _ _ _ _ _ _ _]
-    [_ _ _ _ _ _ _ _ _ _]
-    [_ _ _ _ _ _ _ _ _ _]
-
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    [_][_][_][_][_][_][_][_][_][_]
-    """
+    def _distance(self):
+        head = self.snake[0]
+        return abs(head[0] - self.food[0]) + abs(head[1] - self.food[1])

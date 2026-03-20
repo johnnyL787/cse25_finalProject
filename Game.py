@@ -40,7 +40,7 @@ class Game:
             self.clock.tick(60)
         pygame.quit()
 
-    def update(self, snake, food, reward):
+    def update(self, snake, food, reward) -> int:
         self.snake = snake
         self.food = food
 
@@ -54,6 +54,7 @@ class Game:
 
         pygame.display.update()
         self.clock.tick(60)
+        return self.score
 
     def _draw_board(self):
         font = pygame.font.Font('freesansbold.ttf', 25)
@@ -73,14 +74,15 @@ class Game:
     def _draw_snake(self):
         x = self.snake[0][0] * self.cell_size + BORDER_THICKNESS
         y = self.snake[0][1] * self.cell_size + BORDER_THICKNESS
-        pygame.draw.rect(self.screen, (0, 0, 200), (x, y, self.cell_size, self.cell_size))
-        #pygame.draw.circle(self.screen, "red", (x + self.cell_size//3, y + self.cell_size//3), 10)
-        #pygame.draw.circle(self.screen, "red", (x + 2 * self.cell_size//3, y + self.cell_size//3), 10)
+        color = [0, 0, 0]
+        gradient = 255 // len(self.snake)
+        #pygame.draw.rect(self.screen, (0, 0, 200), (x, y, self.cell_size, self.cell_size))
 
-        for i in range(1, len(self.snake)):
+        for i in range(len(self.snake)):
             x = self.snake[i][0] * self.cell_size + BORDER_THICKNESS
             y = self.snake[i][1] * self.cell_size + BORDER_THICKNESS
-            pygame.draw.rect(self.screen, "blue", (x, y, self.cell_size, self.cell_size))
+            pygame.draw.rect(self.screen, color, (x, y, self.cell_size, self.cell_size))
+            color[2] += gradient
 
     def _draw_food(self):
         pygame.draw.rect(self.screen, "red", (self.food[0] * self.cell_size + BORDER_THICKNESS, self.food[1] * self.cell_size + BORDER_THICKNESS, self.cell_size, self.cell_size))

@@ -67,7 +67,7 @@ target_net = DQN(n_observations, n_actions).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 
 optimizer = optim.AdamW(policy_net.parameters(), lr=LR, amsgrad=True)
-memory = ReplayMemory(10000)
+memory = ReplayMemory(200000)
 
 Transition = namedtuple('Transition', ('state', 'action', 'next_state', 'reward'))
 
@@ -163,27 +163,21 @@ def optimize_model():
     torch.nn.utils.clip_grad_value_(policy_net.parameters(), 100)
     optimizer.step()
 
-from Board import Board
-from Game import Game
-import time
-import pygame
-
-if torch.cuda.is_available() or torch.backends.mps.is_available():
-    num_episodes = 600
-else:
-    num_episodes = 50
-
+num_episodes = 2000
+best_score = -float("inf")
 food_per_episode = [0 for i in range(num_episodes)]
 
 for i_episode in tqdm(range(num_episodes)):
     # Initialize the environment and get its state
     state, info = env.reset()
     state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    episode_score = 0
     for t in count():
         action = select_action(state)
         observation, reward, terminated, truncated, _ = env.step(action.item())
         reward = torch.tensor([reward], device=device)
         done = terminated or truncated
+        episode_score += reward
 
         if terminated:
             next_state = None
@@ -213,18 +207,22 @@ for i_episode in tqdm(range(num_episodes)):
             episode_durations.append(t + 1)
             plot_durations()
             break
+    
+    if episode_score > best_score:
+        best_score = episode_score
+        torch.save(policy_net.state_dict(), "snake_dqn.pth")
 
-torch.save(policy_net.state_dict(), "snake_dqn.pth")
 
 print('Complete')
 plot_durations(show_result=True)
 plt.ioff()
-env.visualize()
 
 plt.figure(2)
 plt.title('Score per episode')
 plt.xlabel('Episodes')
 plt.ylabel('Score')
 plt.plot(food_per_episode)
+
+print(f"Best score: {max(food_per_episode)}")
 
 plt.show()

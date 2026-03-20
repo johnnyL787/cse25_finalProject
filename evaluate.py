@@ -36,26 +36,34 @@ policy_net = DQN(n_observations, n_actions).to(device)
 policy_net.load_state_dict(torch.load("snake_dqn.pth", map_location=device))
 policy_net.eval()
 
-game = Game()
+episodes = 2000
+scores = []
+steps = []
 
-state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
-done = False
-score = 0
+for _ in range(episodes):
+    state, info = env.reset()
+    state = torch.tensor(state, dtype=torch.float32, device=device).unsqueeze(0)
+    done = False
+    score = 0
+    step = 0
 
-while not done:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            done = True
-            
-    action = select_action(state)
-    observation, reward, terminated, truncated, _ = env.step(action.item())
-    reward = torch.tensor([reward], device=device)
-    done = terminated or truncated
+    while not done:
+        action = select_action(state)
+        observation, reward, terminated, truncated, _ = env.step(action.item())
+        done = terminated or truncated
+        step += 1
 
-    if not done:
-        state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+        if reward == env.REWARD_EAT:
+            score += 1
 
-    score = game.update(env.snake, tuple(map(int, env.food)), reward)
-    pygame.display.update()
-    time.sleep(0.1)
-print(f"Final score: {score}")
+        if not done:
+            state = torch.tensor(observation, dtype=torch.float32, device=device).unsqueeze(0)
+
+    scores.append(score)
+    steps.append(step)
+
+
+print(f"Max score: {max(scores)}")
+print(f"Average score: {sum(scores) / len(scores)}")
+print(f"Average step: {sum(steps) / len(steps)}")
+
